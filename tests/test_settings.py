@@ -9,6 +9,7 @@ from config.settings import get_discord_token
 
 class TestSettings:
     def test_digest_import_does_not_require_discord_token(self, monkeypatch) -> None:
+        pytest.importorskip("discord")
         monkeypatch.delenv("DISCORD_TOKEN", raising=False)
 
         importlib.import_module("bot.cogs.digest")
