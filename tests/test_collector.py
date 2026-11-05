@@ -94,8 +94,6 @@ def _default_settings(**overrides) -> FeedSettings:
 
 
 class FakeFeedCollector(FeedCollector):
-    """Substitutes network calls with canned RSS content."""
-
     def __init__(
         self,
         settings: FeedSettings,

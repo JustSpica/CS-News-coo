@@ -18,7 +18,7 @@ _DOMAIN_PATTERN = re.compile(r"^[A-Za-z0-9.-]+$")
 
 
 class FeedConfigError(ValueError):
-    """Raised when the feeds YAML file has an invalid shape or value."""
+    pass
 
 
 def load_feeds_config(path: Path) -> tuple[FeedSettings, list[Topic]]:
