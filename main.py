@@ -2,26 +2,30 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
 
 from config.settings import DIGEST_OUTPUT_DIR, FEEDS_PATH
 from core.collector import FeedCollector
-from core.digest_exporter import JsonDigestExporter
+from core.digest_exporter import ConsoleDigestExporter, DigestExporter, JsonDigestExporter
 from core.feed_loader import FeedConfigError, load_feeds_config
 
 log = logging.getLogger("news-coo")
 
 
 class NewsCollectionRunner:
-    def __init__(self, collector: FeedCollector, exporter: JsonDigestExporter) -> None:
-        self._collector = collector
-        self._exporter = exporter
+    def __init__(self, collector: FeedCollector, exporters: list[DigestExporter]) -> None:
+        if not exporters:
+            msg = "NewsCollectionRunner requires at least one exporter"
+            raise ValueError(msg)
+        self.__collector = collector
+        self.__exporters = exporters
 
-    async def run(self) -> Path:
-        result = await self._collector.collect()
+    async def run(self) -> None:
+        result = await self.__collector.collect()
         if result.total_articles == 0:
             log.warning("Collection returned no articles; exporting an empty digest")
-        return self._exporter.export(result)
+
+        for exporter in self.__exporters:
+            exporter.export(result)
 
 
 def main() -> int:
@@ -38,16 +42,15 @@ def main() -> int:
 
     runner = NewsCollectionRunner(
         collector=FeedCollector(settings, topics),
-        exporter=JsonDigestExporter(DIGEST_OUTPUT_DIR),
+        exporters=[ConsoleDigestExporter(), JsonDigestExporter(DIGEST_OUTPUT_DIR)],
     )
 
     try:
-        digest_path = asyncio.run(runner.run())
+        asyncio.run(runner.run())
     except OSError as exc:
         log.error("Could not write digest to %s: %s", DIGEST_OUTPUT_DIR, exc)
         return 1
 
-    log.info("Digest saved to %s", digest_path)
     return 0
 
 

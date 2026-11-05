@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import io
 import json
 from datetime import UTC, datetime
 
 import pytest
 
-from core.digest_exporter import JsonDigestExporter
+from core.digest_exporter import ConsoleDigestExporter, DigestExporter, JsonDigestExporter
 from core.models import Article, CollectionResult, TopicResult
 
 FIXED_COLLECTED_AT = datetime(2026, 11, 5, 12, 30, 45, tzinfo=UTC)
+EXPECTED_DIGEST_FILENAME = "digest-20261105T123045Z.json"
 
 
 def _fixed_clock() -> datetime:
@@ -45,27 +47,36 @@ def _make_collection_result() -> CollectionResult:
 
 
 def _export_and_load(tmp_path, result: CollectionResult) -> dict:
-    exporter = JsonDigestExporter(tmp_path, clock=_fixed_clock)
-    digest_path = exporter.export(result)
-    return json.loads(digest_path.read_text(encoding="utf-8"))
+    JsonDigestExporter(tmp_path, clock=_fixed_clock).export(result)
+    return json.loads((tmp_path / EXPECTED_DIGEST_FILENAME).read_text(encoding="utf-8"))
+
+
+class TestDigestExporter:
+    def test_base_export_raises_until_subclass_overrides_it(self) -> None:
+        with pytest.raises(NotImplementedError, match="DigestExporter must implement export"):
+            DigestExporter().export(CollectionResult())
+
+    def test_json_and_console_exporters_are_digest_exporters(self, tmp_path) -> None:
+        exporters = [JsonDigestExporter(tmp_path), ConsoleDigestExporter(io.StringIO())]
+
+        assert all(isinstance(exporter, DigestExporter) for exporter in exporters)
 
 
 class TestJsonDigestExporter:
     def test_export_writes_file_named_after_collection_timestamp(self, tmp_path) -> None:
         exporter = JsonDigestExporter(tmp_path, clock=_fixed_clock)
 
-        digest_path = exporter.export(_make_collection_result())
+        exporter.export(_make_collection_result())
 
-        assert digest_path == tmp_path / "digest-20261105T123045Z.json"
-        assert digest_path.is_file()
+        assert [path.name for path in tmp_path.iterdir()] == [EXPECTED_DIGEST_FILENAME]
 
     def test_export_creates_missing_output_directory(self, tmp_path) -> None:
         output_dir = tmp_path / "nested" / "output"
         exporter = JsonDigestExporter(output_dir, clock=_fixed_clock)
 
-        digest_path = exporter.export(_make_collection_result())
+        exporter.export(_make_collection_result())
 
-        assert digest_path.parent == output_dir
+        assert (output_dir / EXPECTED_DIGEST_FILENAME).is_file()
 
     def test_export_includes_collection_summary(self, tmp_path) -> None:
         digest = _export_and_load(tmp_path, _make_collection_result())
@@ -96,9 +107,10 @@ class TestJsonDigestExporter:
     def test_export_keeps_non_ascii_titles_readable(self, tmp_path) -> None:
         exporter = JsonDigestExporter(tmp_path, clock=_fixed_clock)
 
-        digest_path = exporter.export(_make_collection_result())
+        exporter.export(_make_collection_result())
 
-        assert "Inflação desacelera" in digest_path.read_text(encoding="utf-8")
+        digest_text = (tmp_path / EXPECTED_DIGEST_FILENAME).read_text(encoding="utf-8")
+        assert "Inflação desacelera" in digest_text
 
     def test_export_of_empty_result_writes_empty_topic_list(self, tmp_path) -> None:
         digest = _export_and_load(tmp_path, CollectionResult())
@@ -117,3 +129,30 @@ class TestJsonDigestExporter:
             exporter.export(_make_collection_result())
 
         assert list(tmp_path.iterdir()) == []
+
+
+class TestConsoleDigestExporter:
+    def test_export_writes_total_and_per_topic_article_counts(self) -> None:
+        output_stream = io.StringIO()
+
+        ConsoleDigestExporter(output_stream).export(_make_collection_result())
+
+        assert output_stream.getvalue().splitlines()[:3] == [
+            "Collected 2 articles across 2 topics:",
+            "  - Economia Mundial: 2 articles",
+            "  - Tecnologia: 0 articles",
+        ]
+
+    def test_export_lists_failed_sources(self) -> None:
+        output_stream = io.StringIO()
+
+        ConsoleDigestExporter(output_stream).export(_make_collection_result())
+
+        assert output_stream.getvalue().splitlines()[-1] == "Failed sources: Bloomberg"
+
+    def test_export_omits_failed_sources_line_when_nothing_failed(self) -> None:
+        output_stream = io.StringIO()
+
+        ConsoleDigestExporter(output_stream).export(CollectionResult())
+
+        assert output_stream.getvalue() == "Collected 0 articles across 0 topics:\n"
