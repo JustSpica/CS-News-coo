@@ -1,33 +1,35 @@
 # News Coo
 
-A news collector that fetches Google News RSS feeds, organizes them by topic, and saves each run as a JSON digest. Feed sources and topics are declared in a single YAML file; the collector builds one Google News query per topic combining all sources, fetches all topics in parallel, and fills missing top-result sources from leftover combined results or single-source fallback requests.
+**Português** | [English](README-EN.md)
 
-## Table of contents
+Um coletor de notícias que busca feeds RSS do Google News, organiza as notícias por tópico e salva cada execução como um resumo em JSON. As fontes e os tópicos são declarados em um único arquivo YAML; o coletor monta uma busca no Google News por tópico combinando todas as fontes, busca todos os tópicos em paralelo e completa as fontes ausentes dos primeiros resultados com o restante da busca combinada ou com buscas individuais por fonte.
 
-- [Features](#features)
-- [Requirements](#requirements)
-- [Quick start](#quick-start)
-- [Project layout](#project-layout)
-- [Configuration](#configuration)
-  - [Settings](#settings)
-  - [Topics and sources](#topics-and-sources)
-- [Usage](#usage)
+## Sumário
+
+- [Funcionalidades](#funcionalidades)
+- [Requisitos](#requisitos)
+- [Início rápido](#início-rápido)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Configuração](#configuração)
+  - [Parâmetros](#parâmetros)
+  - [Tópicos e fontes](#tópicos-e-fontes)
+- [Uso](#uso)
 - [Scripts](#scripts)
 
-## Features
+## Funcionalidades
 
-- **Declarative feed configuration.** Topics and sources are defined in `config/feeds.yaml`. Adding a new source is a two-line YAML entry (name + domain) — no code changes required. The collector builds the Google News RSS URL automatically from the topic keywords, source domains, and language.
-- **Parallel collection.** All topics are fetched concurrently via `asyncio.gather`. Each topic produces a single Google News query that combines all its sources with `(site:a.com OR site:b.com)`, leveraging Google's own ranking.
-- **Source coverage fallback.** The collector first keeps Google's top ranked results, then checks which configured sources are missing from that top set. Missing sources are filled from lower-ranked combined results when available, or from one individual single-source request when needed.
-- **Defensive collection.** Feed configuration is validated at startup, Google News URLs are encoded from structured query parameters, RSS downloads use a timeout, transient retries, and a response-size limit.
-- **JSON digests.** Each run writes `output/digest-<UTC timestamp>.json` atomically, so an interrupted run never leaves a truncated file.
+- **Configuração declarativa dos feeds.** Os tópicos e as fontes são definidos em `config/feeds.yaml`. Adicionar uma nova fonte é uma entrada de duas linhas no YAML (nome + domínio), sem mudar o código. O coletor monta a URL RSS do Google News automaticamente a partir das palavras-chave do tópico, dos domínios das fontes e do idioma.
+- **Coleta em paralelo.** Todos os tópicos são buscados ao mesmo tempo com `asyncio.gather`. Cada tópico gera uma única busca no Google News que combina todas as suas fontes com `(site:a.com OR site:b.com)`, aproveitando o próprio ranking do Google.
+- **Garantia de cobertura das fontes.** O coletor mantém primeiro os resultados mais bem ranqueados pelo Google e depois verifica quais fontes configuradas ficaram de fora. As fontes ausentes são completadas com resultados mais abaixo na busca combinada, quando existirem, ou com uma busca individual daquela fonte, quando necessário.
+- **Coleta defensiva.** A configuração dos feeds é validada na inicialização, as URLs do Google News são codificadas a partir de parâmetros estruturados e os downloads de RSS têm tempo limite, novas tentativas em falhas temporárias e limite de tamanho da resposta.
+- **Resumo em JSON e no terminal.** Cada execução imprime um resumo por tópico e grava `output/digest-<data e hora UTC>.json` de forma atômica, então uma execução interrompida nunca deixa um arquivo pela metade.
 
-## Requirements
+## Requisitos
 
 - Python 3.14+
-- Collection, test, and lint dependencies listed in `requirements.txt`.
+- Dependências de coleta, testes e lint listadas em `requirements.txt`.
 
-## Quick start
+## Início rápido
 
 ```bash
 git clone git@github.com:JustSpica/News-coo.git
@@ -40,49 +42,49 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The digest is saved to `output/` and its path is printed in the last log line.
+Um resumo por tópico é impresso no terminal e o arquivo JSON é salvo em `output/` (o caminho aparece no log).
 
-## Project layout
+## Estrutura do projeto
 
 ```text
 .
 ├── _scripts/
-│   ├── collect.sh            # Runs one news collection (python main.py)
-│   ├── test.sh               # Runs pytest
-│   └── lint.sh               # Runs ruff check --fix + ruff format
+│   ├── collect.sh            # Executa uma coleta de notícias (python main.py)
+│   ├── test.sh               # Executa o pytest
+│   └── lint.sh               # Executa ruff check --fix + ruff format
 ├── config/
-│   ├── settings.py           # Path constants (feeds config, output dir)
-│   └── feeds.yaml            # Topic and source declarations
+│   ├── settings.py           # Constantes de caminho (config dos feeds, pasta de saída)
+│   └── feeds.yaml            # Declaração dos tópicos e das fontes
 ├── core/
-│   ├── models.py             # Domain dataclasses (Article, Topic, Source, etc.)
-│   ├── feed_loader.py        # YAML config parser
-│   ├── collector.py          # RSS fetcher with parallel topics and source fallback
-│   └── digest_exporter.py    # Writes a collection result to a JSON file
+│   ├── models.py             # Dataclasses do domínio (Article, Topic, Source etc.)
+│   ├── feed_loader.py        # Leitura e validação do YAML
+│   ├── collector.py          # Coletor de RSS com tópicos em paralelo e fontes substitutas
+│   └── digest_exporter.py    # Classe base DigestExporter e exportadores JSON e de terminal
 ├── tests/
-│   ├── test_collector.py     # Feed collection, parsing, ranking, fallback
-│   ├── test_digest_exporter.py  # JSON digest shape and atomic writes
-│   ├── test_feed_loader.py   # YAML loading and defaults
-│   └── test_main.py          # Collection runner and entrypoint exit codes
-├── main.py                   # News collection entrypoint
-├── ruff.toml                 # Linter and formatter configuration
-└── requirements.txt          # Pinned collection, test, and lint dependencies
+│   ├── test_collector.py     # Coleta, parsing, ranking e fontes substitutas
+│   ├── test_digest_exporter.py  # Classe base, formato do JSON, escrita atômica e resumo no terminal
+│   ├── test_feed_loader.py   # Leitura do YAML, valores padrão e erros de validação
+│   └── test_main.py          # NewsCollectionRunner e códigos de saída do programa
+├── main.py                   # Ponto de entrada: main() e NewsCollectionRunner
+├── ruff.toml                 # Configuração do linter e do formatador
+└── requirements.txt          # Dependências fixadas de coleta, testes e lint
 ```
 
-`core/` contains the domain models, feed collection, and JSON export. `main.py` is the entrypoint: it runs one collection and exports it as JSON. `config/` centralizes all configuration.
+`core/` contém os modelos de domínio, a coleta dos feeds e os exportadores. `main.py` é o ponto de entrada: `main()` carrega a configuração, cria o coletor e os exportadores, e o `NewsCollectionRunner` executa uma coleta e entrega o resultado a cada exportador. `config/` centraliza toda a configuração.
 
-## Configuration
+## Configuração
 
-### Settings
+### Parâmetros
 
-`config/feeds.yaml` accepts a top-level `settings` key with the following options:
+O `config/feeds.yaml` aceita uma chave `settings` no nível principal com as seguintes opções:
 
-| Key | Default | Description |
+| Chave | Padrão | Descrição |
 |---|---|---|
-| `max_articles_per_topic` | `15` | Maximum articles kept per topic after collection. Must be between `1` and `50`. |
+| `max_articles_per_topic` | `15` | Quantidade máxima de artigos mantidos por tópico após a coleta. Deve estar entre `1` e `50`. |
 
-### Topics and sources
+### Tópicos e fontes
 
-Each topic has a `display_name`, a non-empty list of `keywords` for the search query, a supported `language` that determines the Google News locale, and a non-empty list of `sources` (name + domain). Unknown settings, unknown topic/source fields, unsupported languages, empty keywords, empty sources, and malformed domains fail fast with a configuration error. The collector combines valid entries into a single RSS URL per topic.
+Cada tópico tem um `display_name`, uma lista não vazia de `keywords` para a busca, um `language` suportado, que define a região do Google News, e uma lista não vazia de `sources` (nome + domínio). Parâmetros desconhecidos, campos desconhecidos em tópicos ou fontes, idiomas não suportados, palavras-chave vazias, fontes vazias e domínios mal formados interrompem a execução logo no início com um erro de configuração. O coletor combina as entradas válidas em uma única URL RSS por tópico.
 
 ```yaml
 topics:
@@ -100,27 +102,39 @@ topics:
         domain: ft.com
 ```
 
-The combined Google News RSS URL follows this format:
+A URL RSS combinada do Google News segue este formato:
 
 ```
 https://news.google.com/rss/search?q={keyword1}+OR+{keyword2}+(site:{domain1}+OR+site:{domain2})+when:7d&hl={hl}&gl={gl}&ceid={ceid}
 ```
 
-When a configured source is missing from the top results and does not appear in the lower-ranked combined results, the fallback URL targets a single source:
+Quando uma fonte configurada não aparece entre os primeiros resultados nem no restante da busca combinada, a URL de busca individual mira uma única fonte:
 
 ```
 https://news.google.com/rss/search?q={keyword1}+OR+{keyword2}+site:{domain}+when:7d&hl={hl}&gl={gl}&ceid={ceid}
 ```
 
-Supported languages: `en` (US locale) and `pt` (Brazilian locale). The `when:7d` suffix restricts results to the last 7 days. RSS downloads use a 30-second timeout, retry transient URL/time-out errors up to two times, and reject responses larger than 2 MB.
+Idiomas suportados: `en` (região dos EUA) e `pt` (região do Brasil). O sufixo `when:7d` restringe os resultados aos últimos 7 dias. Os downloads de RSS têm tempo limite de 30 segundos, repetem até duas vezes em erros temporários de rede ou de tempo esgotado e rejeitam respostas maiores que 2 MB.
 
-## Usage
+## Uso
 
 ```bash
-python main.py            # or ./_scripts/collect.sh
+python main.py            # ou ./_scripts/collect.sh
 ```
 
-All configured topics are fetched in parallel and the result is written to `output/digest-YYYYMMDDTHHMMSSZ.json` (UTC). The process exits with `0` on success and `1` when the feeds config is missing or invalid, or the digest cannot be written. Topics or sources that fail to download do not abort the run; they are listed under `failed_sources`.
+Todos os tópicos configurados são buscados em paralelo e o resultado é entregue a cada exportador em `main.py`: o `ConsoleDigestExporter` imprime um resumo por tópico e o `JsonDigestExporter` grava `output/digest-YYYYMMDDTHHMMSSZ.json` (UTC). Os dois herdam de `DigestExporter`, então um novo destino só precisa de uma nova subclasse. O processo termina com código `0` em caso de sucesso e `1` quando a configuração dos feeds não existe ou é inválida, ou quando o arquivo não pode ser gravado. Tópicos ou fontes que falham no download não interrompem a execução; eles aparecem em `failed_sources` no JSON e na última linha do resumo. Uma fonte que falha em vários tópicos aparece uma vez para cada tópico.
+
+Resumo no terminal:
+
+```text
+Collected 105 articles across 7 topics:
+  - Economia Mundial: 15 articles
+  - Economia Brasileira: 15 articles
+  ...
+Failed sources: Núcleo Jornalismo, Núcleo Jornalismo
+```
+
+Arquivo JSON:
 
 ```json
 {
@@ -146,14 +160,14 @@ All configured topics are fetched in parallel and the result is written to `outp
 }
 ```
 
-`published_at` is `null` when the feed entry has no parseable date.
+`published_at` é `null` quando a notícia no feed não tem uma data válida.
 
 ## Scripts
 
-All scripts are in `_scripts/` and activate the virtual environment automatically.
+Todos os scripts ficam em `_scripts/` e ativam o ambiente virtual automaticamente.
 
-| Script | Usage | Description |
+| Script | Uso | Descrição |
 |---|---|---|
-| `collect.sh` | `./_scripts/collect.sh` | Run one news collection and save the JSON digest. |
-| `test.sh` | `./_scripts/test.sh [-v]` | Run the test suite. Accepts any pytest arguments. |
-| `lint.sh` | `./_scripts/lint.sh [--check]` | Run `ruff check --fix` and `ruff format`. Pass `--check` for non-mutating validation. |
+| `collect.sh` | `./_scripts/collect.sh` | Executa uma coleta, imprime o resumo e salva o arquivo JSON. |
+| `test.sh` | `./_scripts/test.sh [-v]` | Executa os testes. Aceita qualquer argumento do pytest. |
+| `lint.sh` | `./_scripts/lint.sh [--check]` | Executa `ruff check --fix` e `ruff format`. Use `--check` para apenas verificar, sem alterar arquivos. |
