@@ -1,12 +1,10 @@
 # News collection (python main.py) plus test and lint tooling.
-# For the optional Discord bot, install requirements-bot.txt instead.
 feedparser==6.0.12
 iniconfig==2.3.0
 packaging==26.2
 pluggy==1.6.0
 Pygments==2.20.0
 pytest==9.0.3
-python-dotenv==1.2.2
 PyYAML==6.0.3
 ruff==0.15.13
 sgmllib3k==1.0.0

@@ -1,6 +1,6 @@
 # News Coo
 
-A news collector that fetches Google News RSS feeds, organizes them by topic, and saves each run as a JSON digest. An optional Discord bot can display the same digests as paginated slash-command replies. Feed sources and topics are declared in a single YAML file; the collector builds one Google News query per topic combining all sources, fetches all topics in parallel, and fills missing top-result sources from leftover combined results or single-source fallback requests.
+A news collector that fetches Google News RSS feeds, organizes them by topic, and saves each run as a JSON digest. Feed sources and topics are declared in a single YAML file; the collector builds one Google News query per topic combining all sources, fetches all topics in parallel, and fills missing top-result sources from leftover combined results or single-source fallback requests.
 
 ## Table of contents
 
@@ -12,8 +12,6 @@ A news collector that fetches Google News RSS feeds, organizes them by topic, an
   - [Settings](#settings)
   - [Topics and sources](#topics-and-sources)
 - [Usage](#usage)
-  - [Collecting news](#collecting-news)
-  - [Discord bot (optional)](#discord-bot-optional)
 - [Scripts](#scripts)
 
 ## Features
@@ -23,13 +21,11 @@ A news collector that fetches Google News RSS feeds, organizes them by topic, an
 - **Source coverage fallback.** The collector first keeps Google's top ranked results, then checks which configured sources are missing from that top set. Missing sources are filled from lower-ranked combined results when available, or from one individual single-source request when needed.
 - **Defensive collection.** Feed configuration is validated at startup, Google News URLs are encoded from structured query parameters, RSS downloads use a timeout, transient retries, and a response-size limit.
 - **JSON digests.** Each run writes `output/digest-<UTC timestamp>.json` atomically, so an interrupted run never leaves a truncated file.
-- **Optional paginated Discord embeds.** The `/digest` command displays one topic per page with Previous/Next navigation buttons. The pagination component is generic and reusable by other commands.
 
 ## Requirements
 
 - Python 3.14+
 - Collection, test, and lint dependencies listed in `requirements.txt`.
-- Only for the optional bot: the extra dependencies in `requirements-bot.txt` and a Discord bot token from an application invited with the `bot` and `applications.commands` scopes.
 
 ## Quick start
 
@@ -44,7 +40,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The digest is saved to `output/` and its path is printed in the last log line. To run the Discord bot instead, see [Discord bot (optional)](#discord-bot-optional).
+The digest is saved to `output/` and its path is printed in the last log line.
 
 ## Project layout
 
@@ -52,17 +48,10 @@ The digest is saved to `output/` and its path is printed in the last log line. T
 .
 ├── _scripts/
 │   ├── collect.sh            # Runs one news collection (python main.py)
-│   ├── setup.sh              # Bot process management (up/down/restart/status)
 │   ├── test.sh               # Runs pytest
 │   └── lint.sh               # Runs ruff check --fix + ruff format
-├── bot/                      # Optional Discord interface
-│   ├── main.py               # Bot entrypoint, cog loader, logging setup
-│   ├── cogs/
-│   │   └── digest.py         # /digest command and topic embed builder
-│   └── ui/
-│       └── pagination.py     # Reusable paginated embed view
 ├── config/
-│   ├── settings.py           # Environment variables and path constants (feeds, output dir)
+│   ├── settings.py           # Path constants (feeds config, output dir)
 │   └── feeds.yaml            # Topic and source declarations
 ├── core/
 │   ├── models.py             # Domain dataclasses (Article, Topic, Source, etc.)
@@ -70,22 +59,16 @@ The digest is saved to `output/` and its path is printed in the last log line. T
 │   ├── collector.py          # RSS fetcher with parallel topics and source fallback
 │   └── digest_exporter.py    # Writes a collection result to a JSON file
 ├── tests/
-│   ├── conftest.py           # Skips bot tests when discord.py is not installed
 │   ├── test_collector.py     # Feed collection, parsing, ranking, fallback
-│   ├── test_digest_embed.py  # Embed formatting and content
-│   ├── test_digest_exporter.py # JSON digest shape and atomic writes
+│   ├── test_digest_exporter.py  # JSON digest shape and atomic writes
 │   ├── test_feed_loader.py   # YAML loading and defaults
-│   ├── test_main.py          # Collection runner and entrypoint exit codes
-│   ├── test_settings.py      # Environment/config import behavior
-│   └── test_pagination.py    # Pagination view navigation and state
+│   └── test_main.py          # Collection runner and entrypoint exit codes
 ├── main.py                   # News collection entrypoint
-├── .env.example              # Template for environment variables (bot only)
 ├── ruff.toml                 # Linter and formatter configuration
-├── requirements.txt          # Pinned collection, test, and lint dependencies
-└── requirements-bot.txt      # Extra pinned dependencies for the Discord bot
+└── requirements.txt          # Pinned collection, test, and lint dependencies
 ```
 
-`core/` contains domain logic with no dependency on Discord. `main.py` is the primary interface: it runs one collection and exports it as JSON. `bot/` is an optional Discord interface layer that consumes the same `core/`. `config/` centralizes all configuration.
+`core/` contains the domain models, feed collection, and JSON export. `main.py` is the entrypoint: it runs one collection and exports it as JSON. `config/` centralizes all configuration.
 
 ## Configuration
 
@@ -133,8 +116,6 @@ Supported languages: `en` (US locale) and `pt` (Brazilian locale). The `when:7d`
 
 ## Usage
 
-### Collecting news
-
 ```bash
 python main.py            # or ./_scripts/collect.sh
 ```
@@ -167,25 +148,6 @@ All configured topics are fetched in parallel and the result is written to `outp
 
 `published_at` is `null` when the feed entry has no parseable date.
 
-### Discord bot (optional)
-
-```bash
-pip install -r requirements-bot.txt
-
-cp .env.example .env
-# Edit .env and set DISCORD_TOKEN=your-bot-token
-
-./_scripts/setup.sh up
-```
-
-The bot logs to `bot.log` in the project root. Use `./_scripts/setup.sh status` to check if it is running. Once the bot is running and has synced its slash commands:
-
-```
-/digest
-```
-
-The bot defers the response, fetches all configured topics in parallel, and replies with a paginated embed. Each page shows one topic with its articles listed in bold. Use the **◀ Previous** and **Next ▶** buttons to navigate between topics.
-
 ## Scripts
 
 All scripts are in `_scripts/` and activate the virtual environment automatically.
@@ -193,6 +155,5 @@ All scripts are in `_scripts/` and activate the virtual environment automaticall
 | Script | Usage | Description |
 |---|---|---|
 | `collect.sh` | `./_scripts/collect.sh` | Run one news collection and save the JSON digest. |
-| `setup.sh` | `./_scripts/setup.sh up\|down\|restart\|status` | Manage the bot process (background, PID file, logs to `bot.log`). |
-| `test.sh` | `./_scripts/test.sh [-v]` | Run the test suite. Accepts any pytest arguments. Bot tests are skipped when `discord.py` is not installed. |
+| `test.sh` | `./_scripts/test.sh [-v]` | Run the test suite. Accepts any pytest arguments. |
 | `lint.sh` | `./_scripts/lint.sh [--check]` | Run `ruff check --fix` and `ruff format`. Pass `--check` for non-mutating validation. |
