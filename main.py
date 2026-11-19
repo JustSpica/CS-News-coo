@@ -6,6 +6,7 @@ import logging
 from config.settings import DIGEST_OUTPUT_DIR, FEEDS_PATH
 from core.collector import FeedCollector
 from core.digest_exporter import ConsoleDigestExporter, DigestExporter, JsonDigestExporter
+from core.feed_downloader import GoogleNewsFeedDownloader
 from core.feed_loader import FeedConfigError, FeedConfigLoader
 
 log = logging.getLogger("news-coo")
@@ -42,7 +43,7 @@ def main() -> int:
         return 1
 
     runner = NewsCollectionRunner(
-        collector=FeedCollector(settings, topics),
+        collector=FeedCollector(settings, topics, GoogleNewsFeedDownloader()),
         exporters=[ConsoleDigestExporter(), JsonDigestExporter(DIGEST_OUTPUT_DIR)],
     )
 

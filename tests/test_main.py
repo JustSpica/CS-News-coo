@@ -9,16 +9,17 @@ import pytest
 import main
 from core.collector import FeedCollector
 from core.digest_exporter import DigestExporter, JsonDigestExporter
+from core.feed_downloader import GoogleNewsFeedDownloader
 from core.models import Article, CollectionResult, FeedSettings, TopicResult
 
 
 class CannedResultCollector(FeedCollector):
     def __init__(self, canned_result: CollectionResult) -> None:
-        super().__init__(FeedSettings(), [])
-        self._canned_result = canned_result
+        super().__init__(FeedSettings(), [], GoogleNewsFeedDownloader())
+        self.__canned_result = canned_result
 
     async def collect(self) -> CollectionResult:
-        return self._canned_result
+        return self.__canned_result
 
 
 class RecordingDigestExporter(DigestExporter):
