@@ -113,8 +113,6 @@ class TestFeedCollectorParsing:
         assert len(topic_result.articles) == 4
         assert first.title == "First Article"
         assert first.source_name == "TestSource"
-        assert first.topic_key == "test_topic"
-        assert first.topic_display_name == "Test Topic"
         assert first.published_at == datetime(2026, 5, 14, 10, 0, 0, tzinfo=UTC)
         assert topic_result.failed_sources == []
 

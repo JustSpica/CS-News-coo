@@ -94,8 +94,6 @@ class FeedCollector:
                     url=link,
                     title=title,
                     source_name=self.__identify_source_name(source_url, topic.sources),
-                    topic_key=topic.key,
-                    topic_display_name=topic.display_name,
                     published_at=self.__parse_date(entry),
                 )
             )

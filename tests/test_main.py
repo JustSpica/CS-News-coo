@@ -40,8 +40,6 @@ def _single_article_result() -> CollectionResult:
         url="https://news.google.com/a1",
         title="A1",
         source_name="Reuters",
-        topic_key="world_economy",
-        topic_display_name="Economia Mundial",
     )
     return CollectionResult(
         topic_results=[

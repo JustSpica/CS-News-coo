@@ -31,8 +31,6 @@ class Article:
     url: str
     title: str
     source_name: str
-    topic_key: str
-    topic_display_name: str
     published_at: datetime | None = None
 
 

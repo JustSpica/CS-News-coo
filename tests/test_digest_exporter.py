@@ -22,16 +22,12 @@ def _make_collection_result() -> CollectionResult:
         url="https://news.google.com/article-1",
         title="Inflação desacelera",
         source_name="Reuters",
-        topic_key="world_economy",
-        topic_display_name="Economia Mundial",
         published_at=datetime(2026, 11, 4, 10, 0, tzinfo=UTC),
     )
     undated_article = Article(
         url="https://news.google.com/article-2",
         title="Undated article",
         source_name="Unknown",
-        topic_key="world_economy",
-        topic_display_name="Economia Mundial",
     )
     return CollectionResult(
         topic_results=[
