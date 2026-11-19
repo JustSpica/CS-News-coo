@@ -6,7 +6,7 @@ import logging
 from config.settings import DIGEST_OUTPUT_DIR, FEEDS_PATH
 from core.collector import FeedCollector
 from core.digest_exporter import ConsoleDigestExporter, DigestExporter, JsonDigestExporter
-from core.feed_loader import FeedConfigError, load_feeds_config
+from core.feed_loader import FeedConfigError, FeedConfigLoader
 
 log = logging.getLogger("news-coo")
 
@@ -34,8 +34,9 @@ def main() -> int:
         format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
     )
 
+    config_loader = FeedConfigLoader(FEEDS_PATH)
     try:
-        settings, topics = load_feeds_config(FEEDS_PATH)
+        settings, topics = config_loader.load()
     except (FeedConfigError, OSError) as exc:
         log.error("Could not load feeds config %s: %s", FEEDS_PATH, exc)
         return 1

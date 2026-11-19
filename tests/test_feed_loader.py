@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.feed_loader import FeedConfigError, load_feeds_config
+from core.feed_loader import FeedConfigError, FeedConfigLoader
 
 
 class TestFeedLoaderYaml:
@@ -25,7 +25,7 @@ topics:
         yaml_file = tmp_path / "feeds.yaml"
         yaml_file.write_text(yaml_content)
 
-        settings, topics = load_feeds_config(yaml_file)
+        settings, topics = FeedConfigLoader(yaml_file).load()
 
         assert settings.max_articles_per_topic == 5
         assert len(topics) == 1
@@ -44,7 +44,7 @@ topics:
         yaml_file = tmp_path / "feeds.yaml"
         yaml_file.write_text(yaml_content)
 
-        settings, topics = load_feeds_config(yaml_file)
+        settings, topics = FeedConfigLoader(yaml_file).load()
 
         assert settings.max_articles_per_topic == 15
         assert topics == []
@@ -122,4 +122,4 @@ topics:
         yaml_file.write_text(yaml_content)
 
         with pytest.raises(FeedConfigError, match=message):
-            load_feeds_config(yaml_file)
+            FeedConfigLoader(yaml_file).load()
