@@ -10,6 +10,7 @@ Um coletor de notícias que busca feeds RSS do Google News, organiza as notícia
 - [Requisitos](#requisitos)
 - [Início rápido](#início-rápido)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Diagrama de classes](#diagrama-de-classes)
 - [Configuração](#configuração)
   - [Parâmetros](#parâmetros)
   - [Tópicos e fontes](#tópicos-e-fontes)
@@ -52,6 +53,8 @@ Um resumo por tópico é impresso no terminal e o arquivo JSON é salvo em `outp
 │   ├── collect.sh            # Executa uma coleta de notícias (python main.py)
 │   ├── test.sh               # Executa o pytest
 │   └── lint.sh               # Executa ruff check --fix + ruff format
+├── assets/
+│   └── uml_diagram.png       # Diagrama de classes UML
 ├── config/
 │   ├── settings.py           # Constantes de caminho (config dos feeds, pasta de saída)
 │   └── feeds.yaml            # Declaração dos tópicos e das fontes
@@ -73,6 +76,12 @@ Um resumo por tópico é impresso no terminal e o arquivo JSON é salvo em `outp
 ```
 
 `core/` contém os modelos de domínio, a coleta dos feeds e os exportadores. `main.py` é o ponto de entrada: `main()` carrega a configuração, cria o coletor e os exportadores, e o `NewsCollectionRunner` executa uma coleta e entrega o resultado a cada exportador. `config/` centraliza toda a configuração.
+
+## Diagrama de classes
+
+![Diagrama de classes UML do News Coo](assets/uml_diagram.png)
+
+O diagrama mostra as 14 classes do projeto, mais `ValueError` (classe do Python de que `FeedConfigError` herda) e o módulo `main`. Setas cheias com triângulo vazado são herança, setas cheias são associação (a classe guarda uma referência à outra) e setas tracejadas são dependência (a classe cria, lança ou usa a outra sem guardá-la). Membros com `+` são públicos e com `-` são privados (dois sublinhados no Python).
 
 ## Configuração
 

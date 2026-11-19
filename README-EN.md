@@ -10,6 +10,7 @@ A news collector that fetches Google News RSS feeds, organizes them by topic, an
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Project layout](#project-layout)
+- [Class diagram](#class-diagram)
 - [Configuration](#configuration)
   - [Settings](#settings)
   - [Topics and sources](#topics-and-sources)
@@ -52,6 +53,8 @@ A per-topic summary is printed to the terminal and the digest is saved to `outpu
 │   ├── collect.sh            # Runs one news collection (python main.py)
 │   ├── test.sh               # Runs pytest
 │   └── lint.sh               # Runs ruff check --fix + ruff format
+├── assets/
+│   └── uml_diagram.png       # UML class diagram
 ├── config/
 │   ├── settings.py           # Path constants (feeds config, output dir)
 │   └── feeds.yaml            # Topic and source declarations
@@ -73,6 +76,12 @@ A per-topic summary is printed to the terminal and the digest is saved to `outpu
 ```
 
 `core/` contains the domain models, feed collection, and digest exporters. `main.py` is the entrypoint: `main()` loads the config, builds the collector and exporters, and `NewsCollectionRunner` runs one collection and hands the result to every exporter. `config/` centralizes all configuration.
+
+## Class diagram
+
+![News Coo UML class diagram](assets/uml_diagram.png)
+
+The diagram shows the project's 14 classes, plus `ValueError` (the Python class `FeedConfigError` inherits from) and the `main` module. Solid lines with a hollow triangle are inheritance, solid arrows are associations (the class holds a reference to the other) and dashed arrows are dependencies (the class creates, raises or uses the other without holding it). Members marked `+` are public and `-` are private (double underscore in Python).
 
 ## Configuration
 
