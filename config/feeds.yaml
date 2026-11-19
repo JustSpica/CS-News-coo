@@ -142,9 +142,6 @@ topics:
       - name: WIRED
         domain: wired.com
 
-      - name: Núcleo Jornalismo
-        domain: nucleo.jor.br
-
   artificial_intelligence:
     display_name: "Inteligência Artificial"
     keywords:
@@ -156,9 +153,6 @@ topics:
       - "deep learning"
     language: en
     sources:
-      - name: Núcleo Jornalismo
-        domain: nucleo.jor.br
-
       - name: MIT Technology Review
         domain: technologyreview.com
 
