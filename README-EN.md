@@ -2,7 +2,7 @@
 
 [Português](README.md) | **English**
 
-A news collector that fetches Google News RSS feeds, organizes them by topic, and saves each run as a JSON digest. Feed sources and topics are declared in a single YAML file; the collector builds one Google News query per topic combining all sources, fetches all topics in parallel, and fills missing top-result sources from leftover combined results or single-source fallback requests.
+A news collector that fetches Google News RSS feeds, organizes them by topic, and saves each run as a JSON digest. Feed sources and topics are declared in a single YAML file; the collector builds one Google News query per topic combining all sources, fetches all topics in parallel, and keeps Google's top ranked results.
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ A news collector that fetches Google News RSS feeds, organizes them by topic, an
 
 - **Declarative feed configuration.** Topics and sources are defined in `config/feeds.yaml`. Adding a new source is a two-line YAML entry (name + domain) — no code changes required. The collector builds the Google News RSS URL automatically from the topic keywords, source domains, and language.
 - **Parallel collection.** All topics are fetched concurrently via `asyncio.gather`. Each topic produces a single Google News query that combines all its sources with `(site:a.com OR site:b.com)`, leveraging Google's own ranking.
-- **Source coverage fallback.** The collector first keeps Google's top ranked results, then checks which configured sources are missing from that top set. Missing sources are filled from lower-ranked combined results when available, or from one individual single-source request when needed.
+- **Google ranking.** Each topic keeps the first `max_articles_per_topic` results of the combined query, in Google News order.
 - **Defensive collection.** Feed configuration is validated at startup, Google News URLs are encoded from structured query parameters, RSS downloads use a timeout, transient retries, and a response-size limit.
 - **JSON digests and terminal summary.** Each run prints a per-topic summary and writes `output/digest-<UTC timestamp>.json` atomically, so an interrupted run never leaves a truncated file.
 
@@ -32,8 +32,8 @@ A news collector that fetches Google News RSS feeds, organizes them by topic, an
 ## Quick start
 
 ```bash
-git clone git@github.com:JustSpica/News-coo.git
-cd News-coo
+git clone git@github.com:JustSpica/CS-News-coo.git
+cd CS-News-coo
 
 python -m venv .venv
 source .venv/bin/activate
@@ -57,12 +57,14 @@ A per-topic summary is printed to the terminal and the digest is saved to `outpu
 │   └── feeds.yaml            # Topic and source declarations
 ├── core/
 │   ├── models.py             # Domain dataclasses (Article, Topic, Source, etc.)
-│   ├── feed_loader.py        # YAML config parser
-│   ├── collector.py          # RSS fetcher with parallel topics and source fallback
+│   ├── feed_loader.py        # FeedConfigLoader: YAML config parser and validator
+│   ├── feed_downloader.py    # GoogleNewsFeedDownloader: HTTP download with timeout and retry
+│   ├── collector.py          # FeedCollector: parallel topic fetching and RSS parsing
 │   └── digest_exporter.py    # DigestExporter base class, JSON and console exporters
 ├── tests/
-│   ├── test_collector.py     # Feed collection, parsing, ranking, fallback
+│   ├── test_collector.py     # Feed collection, parsing, ranking, URL building
 │   ├── test_digest_exporter.py  # Exporter base class, JSON shape, atomic writes, console summary
+│   ├── test_feed_downloader.py  # Download size limit and URL scheme check
 │   ├── test_feed_loader.py   # YAML loading, defaults, and validation errors
 │   └── test_main.py          # Collection runner and entrypoint exit codes
 ├── main.py                   # Entrypoint: main() and NewsCollectionRunner
@@ -84,7 +86,7 @@ A per-topic summary is printed to the terminal and the digest is saved to `outpu
 
 ### Topics and sources
 
-Each topic has a `display_name`, a non-empty list of `keywords` for the search query, a supported `language` that determines the Google News locale, and a non-empty list of `sources` (name + domain). Unknown settings, unknown topic/source fields, unsupported languages, empty keywords, empty sources, and malformed domains fail fast with a configuration error. The collector combines valid entries into a single RSS URL per topic.
+Each topic has a `display_name`, a non-empty list of `keywords` for the search query, a supported `language` (`en` when omitted) that determines the Google News locale, and a non-empty list of `sources` (name + domain). Unknown settings, unknown topic/source fields, unsupported languages, empty keywords, empty sources, and malformed domains fail fast with a configuration error. The collector combines valid entries into a single RSS URL per topic.
 
 ```yaml
 topics:
@@ -108,12 +110,6 @@ The combined Google News RSS URL follows this format:
 https://news.google.com/rss/search?q={keyword1}+OR+{keyword2}+(site:{domain1}+OR+site:{domain2})+when:7d&hl={hl}&gl={gl}&ceid={ceid}
 ```
 
-When a configured source is missing from the top results and does not appear in the lower-ranked combined results, the fallback URL targets a single source:
-
-```
-https://news.google.com/rss/search?q={keyword1}+OR+{keyword2}+site:{domain}+when:7d&hl={hl}&gl={gl}&ceid={ceid}
-```
-
 Supported languages: `en` (US locale) and `pt` (Brazilian locale). The `when:7d` suffix restricts results to the last 7 days. RSS downloads use a 30-second timeout, retry transient URL/time-out errors up to two times, and reject responses larger than 2 MB.
 
 ## Usage
@@ -122,7 +118,7 @@ Supported languages: `en` (US locale) and `pt` (Brazilian locale). The `when:7d`
 python main.py            # or ./_scripts/collect.sh
 ```
 
-All configured topics are fetched in parallel and the result is passed to each exporter in `main.py`: `ConsoleDigestExporter` prints a per-topic summary and `JsonDigestExporter` writes `output/digest-YYYYMMDDTHHMMSSZ.json` (UTC). Both subclass `DigestExporter`, so a new destination only needs a new subclass. The process exits with `0` on success and `1` when the feeds config is missing or invalid, or the digest cannot be written. Topics or sources that fail to download do not abort the run; they are listed under `failed_sources` in the JSON and on the summary's last line. A source that fails in several topics is listed once per topic.
+All configured topics are fetched in parallel and the result is passed to each exporter in `main.py`. `main()` builds a `FeedConfigLoader` to read the YAML and a `FeedCollector` that receives a `GoogleNewsFeedDownloader` for the downloads. `ConsoleDigestExporter` prints a per-topic summary and `JsonDigestExporter` writes `output/digest-YYYYMMDDTHHMMSSZ.json` (UTC). Both subclass `DigestExporter`, so a new destination only needs a new subclass. The process exits with `0` on success and `1` when the feeds config is missing or invalid, or the digest cannot be written. A topic that fails to download does not abort the run; all of its sources are listed under `failed_sources` in the JSON and on the summary's last line. A source that fails in several topics is listed once per topic. When no topic fails, the `Failed sources` line is not printed and `failed_sources` is empty, as in the examples below.
 
 Terminal summary:
 
@@ -131,7 +127,6 @@ Collected 105 articles across 7 topics:
   - Economia Mundial: 15 articles
   - Economia Brasileira: 15 articles
   ...
-Failed sources: Núcleo Jornalismo, Núcleo Jornalismo
 ```
 
 JSON digest:
@@ -140,7 +135,7 @@ JSON digest:
 {
   "collected_at": "2026-11-05T21:05:58+00:00",
   "total_articles": 105,
-  "failed_sources": ["Núcleo Jornalismo"],
+  "failed_sources": [],
   "topics": [
     {
       "key": "world_economy",
